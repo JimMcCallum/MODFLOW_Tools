@@ -1,12 +1,18 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
-
+import matplotlib.pyplot as plt
+from shapely.geometry import LineString,Point,Polygon,shape
+import numpy as np
+import geopandas as gpd
+import math
+import flopy
 
 def resample_poly(gdf, distance): # gdf contains a single polygon
     poly = gdf.geometry[0]    
     exterior_coords = list(poly.exterior.coords)
+    
+    
     exterior_line = LineString(exterior_coords)
     resampled_line = []
     current_distance = 0
@@ -33,7 +39,7 @@ def resample_linestring(linestring, distance):
 # Preparing meshes for boundaries, bores and fault. 
 
 def prepboundarymesh(P, grid): # MODEL BOUNDARY
-    
+    #from shapely.geometry import LineString,Point,Polygon,shape
     x0, x1, y0, y1 = P.x0, P.x1, P.y0, P.y1 
     w, r  = P.w, P.r
     Lx, Ly = x1 - x0, y1 - y0
@@ -47,6 +53,7 @@ def prepboundarymesh(P, grid): # MODEL BOUNDARY
 
         # INTERIOR BOUNDARY
         interior_vertices = [(x0+w,y0+w),(x1-w,y0+w),(x1-w, y1-w),(x0+w,y1-w)]
+        print(interior_vertices)
         interior_poly = Polygon(interior_vertices)
         
     if grid == 'vor':
@@ -58,13 +65,12 @@ def prepboundarymesh(P, grid): # MODEL BOUNDARY
 
         # INTERIOR BOUNDARY
         interior_vertices = [(x0+w,y0+w),(x1-w,y0+w),(x1-w, y1-w),(x0+w,y1-w)]
-        from shapely.geometry import LineString,Point,Polygon,shape
         interior_poly = Polygon(interior_vertices)
     
     return(model_vertices, interior_vertices)
 
 def prepboremesh(P, grid):
-    import numpy as np
+    
     theta = np.linspace(0, 2 * np.pi, 11)
 
     pump_bores_inner, pump_bores_outer = [], []
@@ -145,9 +151,11 @@ def prepboremesh(P, grid):
 
         return(pump_bores_inner, pump_bores_outer) #, obs_bores_inner, obs_bores_outer)
 
-def prepare_fault_nodes_voronoi(P, shpfilepath, model_boundary):
+def prepare_fault_nodes_voronoi(P, shpfilepath, model_boundary, inner_boundary):
     # Import fault and turn into a linestring
     #gdf = gpd.read_file('../shp/badaminna_fault.shp') 
+    
+    #from shapely.geometry import LineString,Point,Polygon,shape
     gdf = gpd.read_file(shpfilepath) 
     fault = gpd.clip(gdf, model_boundary) # fault is a gdf
     df = fault.get_coordinates()
@@ -179,11 +187,12 @@ def prepare_fault_nodes_voronoi(P, shpfilepath, model_boundary):
     return(fault_refinement_nodes)
     
 def prepfaultmesh(P, grid): # This has been made for a pretend fault. Will look different for a real one!
-    
+    #import numpy as np
+    #import math
+    #from shapely.geometry import Polygon
     L = P.fault_buffer
     Lfault = np.sqrt((P.fx2-P.fx1)**2+(P.fy2 - P.fy1)**2)
-    from shapely.geometry import LineString,Point,Polygon,shape
-         # refining factor - adds points along fault for triangulation
+    # refining factor - adds points along fault for triangulation
     fs = (P.fy2 - P.fy1)/(P.fx2 - P.fx1) # fault strike in xy
     fp = -1/fs # direction perpendiculr to fault strike
     theta = math.atan(fp)
@@ -227,7 +236,7 @@ def prepfaultmesh(P, grid): # This has been made for a pretend fault. Will look 
 # PREPARING NODES AND POLYGONS AND THEN CALLING MESHING FUNCTION
 
 def createcell2d(P, grid, fault = False):
-    
+    #import numpy as np
     if grid == 'car':
         delr = P.delx * np.ones(P.ncol, dtype=float)
         delc = P.dely * np.ones(P.nrow, dtype=float)
@@ -313,7 +322,7 @@ def createcell2d(P, grid, fault = False):
         if fault == False:
             if 'P.fault_poly' in locals():
                 del P.fault_poly
-        import numpy as np        
+        #import numpy as np        
         nodes = np.array(nodes)
         
         polygons = []
@@ -340,7 +349,7 @@ def createcell2d(P, grid, fault = False):
 
 def tri_meshing(P, polygons, nodes):
 
-    import flopy
+    #import flopy
     from flopy.discretization import VertexGrid
     from flopy.utils.triangle import Triangle as Triangle
     
@@ -362,7 +371,7 @@ def tri_meshing(P, polygons, nodes):
 
 def vor_meshing(P, polygons, nodes):
 
-    import flopy
+    #import flopy
     from flopy.discretization import VertexGrid
     from flopy.utils.triangle import Triangle as Triangle
     from flopy.utils.voronoi import VoronoiGrid
@@ -434,7 +443,7 @@ def plot_cell2d_vor(P, xlim, ylim): #xlim = [x0, x1], ylim = [y0, y1]):
     for i in P.xcycvor: ax.plot(i[0], i[1], 'o', color = 'green', ms = 1.5)
     for i in range(P.npump):
         ax.plot(P.xypumpbores[i], ms = 2, color = 'black')
-    for i in vornodes: ax.plot(i[0], i[1], 'o', ms = 2, color = 'black')
+    for i in P.vornodes: ax.plot(i[0], i[1], 'o', ms = 2, color = 'black')
     ax.set_xlim(xlim)
     ax.set_ylim(ylim)
     ax.set_title('Nodes in 2D: ' + str(len(P.cell2dvor)))

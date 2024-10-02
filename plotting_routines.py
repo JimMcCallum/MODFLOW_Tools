@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
-
-# In[ ]:
-
+import numpy as np
+import matplotlib.pyplot as plt
+import flopy
+from shapely.geometry import LineString,Point,Polygon,shape
 
 def multiplot_vgrid_transect(P, models, array, X0, Y0, X1, Y1, vmin = None, vmax = None): # array needs to be a string of a property eg. 'k11', 'angle2'
     nmodels = len(models)
@@ -31,7 +32,7 @@ def multiplot_vgrid_transect(P, models, array, X0, Y0, X1, Y1, vmin = None, vmax
 def plot_flow_features(P, models):
     
     fig = plt.figure(figsize = (12,5))
-    fig.suptitle("Flow Features")
+    #fig.suptitle("Flow Features")
     for i, M in enumerate(models):
         ax = plt.subplot(1,3,i+1)
         
@@ -99,6 +100,8 @@ def multiplot_prop_plan(P, models, array, layer, vmin = None, vmax = None):   # 
     plt.tight_layout()  
     
 def multiplot_prop_transect(P, models, array, X0, Y0, X1, Y1, vmin = None, vmax = None): # array needs to be a string of a property eg. 'k11', 'angle2'
+    import matplotlib.pyplot as plt    
+    import flopy
     nmodels = len(models)
     if nmodels > 1: fig = plt.figure(figsize = (10,2*nmodels))
     if nmodels ==1: fig = plt.figure(figsize = (10,2.5))
@@ -209,7 +212,8 @@ def multiplot_heads_plan(P, layer, models, period):#, obs_points):#, vmin, vmax)
             ax.annotate(j, (P.xyobsbores[j][0], P.xyobsbores[j][1]+60), c = 'black', size = 12) #, weight = 'bold')
     plt.tight_layout()  
 
-def multiplot_heads_transect(period, X0, Y0, X1, Y1):#, vmin, vmax):    
+def multiplot_heads_transect(period, models, extent, X0, Y0, X1, Y1):#, vmin, vmax):    
+    #extent = [x0,x1,z0,z1]
     nmodels = len(models)
     fig = plt.figure(figsize = (10, 2*nmodels))
     fig.suptitle("TRANSECT")
@@ -222,7 +226,7 @@ def multiplot_heads_transect(period, X0, Y0, X1, Y1):#, vmin, vmax):
         if period == 'Future': array = M.head_future
         ax.set_title(M.modelname, size = 10) 
         xsect = flopy.plot.PlotCrossSection(model=model, line={"line": [(X0, Y0),(X1, Y1)]}, 
-                                            extent = [x0,x1,z0,z1], geographic_coords=True)
+                                            extent = extent, geographic_coords=True)
         csa = xsect.plot_array(a = array, cmap = 'Spectral', alpha=0.8)#, vmin = vmin, vmax = vmax)
         if i == nmodels-1: ax.set_xlabel('x (m)', size = 10)
         if i == int(nmodels/2): ax.set_ylabel('z (m)', size = 10)
@@ -234,48 +238,6 @@ def multiplot_heads_transect(period, X0, Y0, X1, Y1):#, vmin, vmax):
 # In[9]:
 
 
-def vtk_make(self, result = False, pfx = None):
-    f = open(self.modelname + '.vtk','w')
-    f.write('# vtk DataFile Version 3.0\nvtk output\nASCII\nDATASET UNSTRUCTURED_GRID\n')
-    NE = self.disu_gridprops["nodes"]
-    NP = NE*6
-    f.write('POINTS %i float\n' % NP)
-    for k in range(NE):
-        for j in range(4,7,1):
-            f.write('%.10g %.10g %.10g\n' % (self.disu_gridprops['vertices'][self.disu_gridprops['cell2d'][k][j]][1],
-                                    self.disu_gridprops['vertices'][self.disu_gridprops['cell2d'][k][j]][2],
-                                    self.disu_gridprops['top'][k]))
-        for j in range(4,7,1):
-            f.write('%.10g %.10g %.10g\n' % (self.disu_gridprops['vertices'][self.disu_gridprops['cell2d'][k][j]][1],
-                                    self.disu_gridprops['vertices'][self.disu_gridprops['cell2d'][k][j]][2],
-                                    self.disu_gridprops['bot'][k]))
-
-    f.write('CELLS %i %i\n' % (NE,NE*7))
-    ct = 0
-    for i in range(NE):
-        f.write('%i %i %i %i %i %i %i \n' % (6,ct,ct+1,ct+2,ct+3,ct+4,ct+5))
-        ct+=6
-    f.write('CELL_TYPES %i\n' % NE)
-    for i in range(NE):
-        f.write('%i \n' % 13)
-
-    f.write('CELL_DATA %i\nSCALARS Layer int 1 \nLOOKUP_TABLE default\n' % NE )
-    for i in range(NE):
-        if i == 0:
-            f.write('%i\n' % self.disu_gridprops['ihc'][0])
-        else:
-            f.write('%i\n' % self.disu_gridprops['ihc'][np.cumsum(self.disu_gridprops['iac'])[i-1]])
-    f.close()
-
-    if result:
-        nstp = np.shape(self.head)[0]
-        for i in range(nstp):
-            shutil.copy(self.modelname + '.vtk', self.modelname + pfx + '_' + str(i) + '.vtk')
-            f = open(self.modelname + pfx + '_' + str(i) + '.vtk','a')
-            f.write('SCALARS head float 1 \nLOOKUP_TABLE default\n')
-            for j in range(NE):
-                f.write('%g\n' % self.head[i,0,0,j])
-            f.close()
             
 def make_vtk(P, nam_file): # from https://flopy.readthedocs.io/en/latest/Notebooks/export_vtk_tutorial.html
     from flopy.export import vtk
@@ -356,7 +318,10 @@ def plot_runtime_complexity():
 
 
 def plot_bylayer(P, models, layer, vmin = None, vmax = None):
-    
+    import matplotlib.pyplot as plt
+    import flopy
+    import numpy as np
+    import math
     fig = plt.figure(figsize=(12, 8))
     nmodels = len(models)
     for i in range(nmodels):
@@ -386,7 +351,44 @@ def plot_bylayer(P, models, layer, vmin = None, vmax = None):
         plt.colorbar(H, shrink = 0.4)
 
 
-# In[ ]:
+def plot_problem_cell(P, gwf, X, Y, Z, vmin = None, vmax = None): # array needs to be a string of a property eg. 'k11', 'angle2'
+    a = gwf.npf.k.get_data()
+    fig = plt.figure(figsize = (10,3))
+    ax = plt.subplot(121)
+    ax.set_title("West-East Transect\nY = %i" %(Y))
+    xsect = flopy.plot.PlotCrossSection(modelgrid=gwf.modelgrid, line={"line": [(P.x0, Y),(P.x1, Y)]},
+                                        geographic_coords=True)
+    csa = xsect.plot_array(a = a, cmap = 'Spectral', alpha=0.8, vmin = vmin, vmax = vmax)
+    ax.plot(X, Z, 'o', color = 'red')
+    ax.set_xlabel('x (m)', size = 10)
+    ax.set_ylabel('z (m)', size = 10)
+    linecollection = xsect.plot_grid(lw = 0.1, color = 'black') 
+    
+    ax = plt.subplot(122)
+    ax.set_title("South-North Transect\nX = %i" %(X))
+    xsect = flopy.plot.PlotCrossSection(modelgrid=gwf.modelgrid, line={"line": [(X, P.y0),(X, P.y1)]},
+                                        geographic_coords=True)
+    csa = xsect.plot_array(a = a, cmap = 'Spectral', alpha=0.8, vmin = vmin, vmax = vmax)
+    ax.plot(Y, Z, 'o', color = 'red')
+    ax.set_xlabel('y (m)', size = 10)
+    ax.set_ylabel('z (m)', size = 10)
+    #ax.set_xlim([1000, 3000])
+    #ax.set_ylim([-68, -48])
+    linecollection = xsect.plot_grid(lw = 0.1, color = 'black') 
+    
+    fig = plt.figure(figsize = (6,6))
+    ax = plt.subplot(111)
+    ax.set_title("Plan")
+    mapview = flopy.plot.PlotMapView(modelgrid=gwf.modelgrid, layer = 0)#, geographic_coords=True)
+    plan = mapview.plot_array(a = a, cmap = 'Spectral', alpha=0.8, vmin = vmin, vmax = vmax)
+    ax.plot(X, Y, 'o', color = 'red')
+    ax.set_xlabel('x (m)', size = 10)
+    ax.set_ylabel('y (m)', size = 10)
+    linecollection = mapview.plot_grid(lw = 0.1, color = 'black') 
+    
+    #plt.colorbar(csa, shrink = 0.7)
+    plt.tight_layout()  
+    plt.show()  
 
 
 print('Plotting routines loaded!')

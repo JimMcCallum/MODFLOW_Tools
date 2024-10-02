@@ -4,7 +4,7 @@
 # In[1]:
 
 
-import numpy as np
+'''import numpy as np
 import math
 import matplotlib.pyplot as plt
 import sys
@@ -27,22 +27,8 @@ from flopy.utils.triangle import Triangle as Triangle
 import geopandas as gpd
 from shapely.geometry import LineString,Point,Polygon,shape
 import fiona
-from shapely import speedups
-speedups.disable()
-from datetime import datetime
-
-
-# In[ ]:
-
-
-np.set_printoptions(precision=6)
-logfunc = lambda e: np.log10(e)
-
-
-# In[ ]:
-
-
-# Working with cell numbering
+from datetime import datetime'''
+# logfunc = lambda e: np.log10(e)
 
 def find_kji(cell,nlay,nrow,ncol): #cellid is zerobased
     import math
@@ -97,6 +83,7 @@ def RCA(x,X):
     return(ct % 2)
 
 def find_cell_disv(x, y, xcyc):
+    import numpy as np
     dist_from_xy = [] # Finding cell id of most centred cell
     for i in range(len(xcyc)):
         dist_from_xy.append(np.sqrt((xcyc[i][0] - x)**2 + (xcyc[i][1] - y)**2))
@@ -113,6 +100,7 @@ def find_cell_dis(x, y, x0, y1, dx, dy):
     return (col, row, cell_coords)
 
 def disucell_to_xyz(self, disu_cell): # zerobased
+    import math
     disv_cell = self.cellid_disv.flatten()[self.cellid_disv.flatten()==disu_cell]    
     lay  = math.floor(disv_cell/(self.ncpl)) # Zero based
     icpl = math.floor(disv_cell - lay * self.ncpl) # Zero based
@@ -122,9 +110,11 @@ def disucell_to_xyz(self, disu_cell): # zerobased
     return(x,y,z)
 
 def xyz_to_disucell(self, x, y, z): # zerobased
+    import flopy
     self.vgrid = flopy.discretization.VertexGrid(ncpl = self.ncpl, vertices = self.vertices, cell2d = self.cell2d,
                                                  nlay = self.nlay, botm = self.botm, top = self.top)
-    point = Point(x,y,z)
+    from shapely.geometry import Point
+    #point = Point(x,y,z)
     icpl = self.vgrid.intersect(x,y)
     pillar = self.vgrid.botm[:,icpl]
     for k in range(self.nlay):
@@ -136,8 +126,8 @@ def xyz_to_disucell(self, x, y, z): # zerobased
         print('z is not within modelgrid')
         
 def disucell_layicpl(M, disu_cell): # zero-based
+    import math
     disv_cell = M.cellid_disv.flatten()[M.cellid_disv.flatten()==disu_cell]  
-    
     lay  = math.floor(disv_cell/(M.ncpl)) # Zero based
     icpl = math.floor(disv_cell - lay * M.ncpl) # Zero based
     return(lay, icpl)
@@ -149,6 +139,7 @@ def disucell_layicpl(M, disu_cell): # zero-based
 # Writing and processing MODFLOW arrays
 
 def write_input_files(gwf,modelname):
+    import flopy
     headfile = '{}.hds'.format(modelname)
     head_filerecord = [headfile]
     budgetfile = '{}.bud'.format(modelname)
@@ -158,6 +149,8 @@ def write_input_files(gwf,modelname):
                                                 budget_filerecord=budget_filerecord, printrecord=printrecord)
 
 def get_data(modelname, workspace):
+    import os
+    import flopy
     fpth = os.path.join(workspace, modelname +'.hds')
     hds = flopy.utils.binaryfile.HeadFile(fpth)  
     times = hds.get_times()
@@ -179,7 +172,8 @@ def ch_flow(chdflow):
     return((flow_in, flow_out))
 
 def get_q_disu(spd, flowja, gwf, staggered):
-
+    import math
+    import flopy
     qx, qy, qz = flopy.utils.postprocessing.get_specific_discharge(spd, gwf)
     # if cross-connections, recalculate qx taking into account overlap areas
     if staggered:
@@ -218,9 +212,6 @@ def get_q_disu(spd, flowja, gwf, staggered):
         qmag.append(np.sqrt(qx[i]**2 + qy[i]**2 + qz[i]**2))
         qdir.append(math.degrees(math.atan(qz[i]/qx[i])))      
     return(qmag,qx,qy,qz,qdir)
-
-
-# In[ ]:
 
 
 print('Modelling routines loaded!')

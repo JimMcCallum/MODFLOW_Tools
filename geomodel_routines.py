@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
-
-
-# Geomodelling routines
+import matplotlib.pyplot as plt
 
 def plot_bores(P):
     plt.figure(figsize=(3,3))
@@ -27,7 +24,7 @@ def plot_bores(P):
         
 
 def plot_geo_2D(geomodel, X, upper_levels, lower_levels):
-    import matplotlib.pyplot as plt
+    #import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(1,1,figsize=(5,2))
     r = 200
@@ -47,7 +44,7 @@ def plot_geo_2D(geomodel, X, upper_levels, lower_levels):
     plt.show()
     
 def plot_geo_2D_WE(geomodel, Y, upper_levels, lower_levels):
-    import matplotlib.pyplot as plt
+    #import matplotlib.pyplot as plt
     fig, ax = plt.subplots(1,1,figsize=(5,2))
     r = 200
     #Y section
