@@ -341,7 +341,7 @@ class Model:
         hds = self.gwf.output.head()
         self.h= hds.get_alldata()
         cbc = self.gwf.output.budget()
-        self.ghb = cbc.get_ts((self.nlay,1),text="GHB")
+        self.ghb = cbc.get_ts((self.nlay,1,1),text="GHB")
         if type(self.tmod) != type(None):
             conc = self.gwt.output.concentration()
             self.c = conc.get_alldata()
