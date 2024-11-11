@@ -344,6 +344,7 @@ class Model:
         data = cbc.get_data(text = 'GHB')
         ghb = []
         for ii in range(self.nper):
+            print(data[ii][-1])
             ghb.append(data[ii][-1])
         self.ghb = np.array(ghb)
         #self.ghb = cbc.get_ts((self.nlay-1,0),text="GHB")
