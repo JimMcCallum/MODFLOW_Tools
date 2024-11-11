@@ -143,7 +143,7 @@ class Model:
 
         #Drain
         # The top, which will be modified in API
-        tide_GHB_SPD = [((0,0),top,1e-5)]
+        tide_GHB_SPD = [((0,0),top,10000.)]
         self.tide_DRN = flopy.mf6.ModflowGwfdrn(self.gwf,  
                                                 stress_period_data = {0 :tide_GHB_SPD},
                                                 pname="DRN_1",
@@ -289,16 +289,16 @@ class Model:
             mf6.set_value(tag,bound)
             #print(sw,self.top,bound)
             
-            address = ["cond",self.fmod,"drn_1"]
+            address = ["elev",self.fmod,"drn_1"]
             tag = mf6.get_var_address(*address)
             bound = mf6.get_value_ptr(tag)    
             print(bound)
             if sw > self.top:
-                bound[0,0] = sw
-                bound[0,1] = 10000.
+                bound[0] = sw
+                #bound[0,1] = 10000.
             else:
-                bound[0,0] = self.top
-                bound[0,1] = 10000.                
+                bound[0] = self.top
+                #bound[0,1] = 10000.                
             mf6.set_value(tag,bound)
             
             dt = mf6.get_time_step()
