@@ -342,12 +342,9 @@ class Model:
         self.h= hds.get_alldata()
         cbc = self.gwf.output.budget()
         data = cbc.get_data(text = 'GHB')
-        self.data = data
-        ghb = []
-        for ii in range(self.nper):
-            ghb.append(data[ii][-1])
         
-        self.ghb = np.array(ghb)
+        self.ghb =[item[2] for item in data]
+        self.ghb = np.array(self.ghb)
         #self.ghb = cbc.get_ts((self.nlay-1,0),text="GHB")
         if type(self.tmod) != type(None):
             conc = self.gwt.output.concentration()
