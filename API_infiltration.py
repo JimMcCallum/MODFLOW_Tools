@@ -95,6 +95,7 @@ class Model:
         ncpl =len(cell2d)
         nvert = len(vertices)
         nlay = len(botm)
+        self.nlay = nlay
         self.disv = flopy.mf6.ModflowGwfdisv(self.gwf, 
                                 length_units='meters', 
                                 nlay=nlay, 
@@ -340,7 +341,7 @@ class Model:
         hds = self.gwf.output.head()
         self.h= hds.get_alldata()
         cbc = self.gwf.output.budget()
-        self.ghb = cbc.get_data(text="GHB")
+        self.ghb = cbc.get_ts((self.nlay,1),text="GHB")
         if type(self.tmod) != type(None):
             conc = self.gwt.output.concentration()
             self.c = conc.get_alldata()
