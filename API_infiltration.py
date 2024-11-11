@@ -340,8 +340,13 @@ class Model:
         mf6.finalize()
         hds = self.gwf.output.head()
         self.h= hds.get_alldata()
-        self.cbc = self.gwf.output.budget()
-       #self.ghb = cbc.get_ts((self.nlay-1,0),text="GHB")
+        cbc = self.gwf.output.budget()
+        data = self.get_data(text = 'GHB')
+        ghb = []
+        for ii in range(self.nper):
+            ghb.append(data[ii][-1])
+        self.ghb = np.array(ghb)
+        #self.ghb = cbc.get_ts((self.nlay-1,0),text="GHB")
         if type(self.tmod) != type(None):
             conc = self.gwt.output.concentration()
             self.c = conc.get_alldata()
