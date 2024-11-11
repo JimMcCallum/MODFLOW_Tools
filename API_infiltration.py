@@ -27,7 +27,7 @@ class Model:
                  Sy,
                  theta_sat,
                  Water_Table,
-                 thera_r,
+                 theta_r,
                  eps,
                  AEP,
                  theta_i,
@@ -37,6 +37,7 @@ class Model:
                  extwc, 
                  hroot, 
                  rootact):
+    
         
         #initiale simultation
         self.sim = flopy.mf6.MFSimulation(sim_name=simname, 
