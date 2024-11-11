@@ -291,8 +291,6 @@ class Model:
             
             address = ["elev",self.fmod,"drn_1"]
             tag = mf6.get_var_address(*address)
-            bound = mf6.get_value_ptr(tag)    
-            print(bound)
             if sw > self.top:
                 bound[0] = sw
                 #bound[0,1] = 10000.
