@@ -13,6 +13,9 @@ from modflowapi import ModflowApi
 
 class Model:
     def __init__(self,
+                 simname,
+                 modelname,
+                 tmodelname,
                  t,
                  z,
                  Kx, #probably irrelevent
@@ -35,13 +38,15 @@ class Model:
                  hroot, 
                  rootact):
         
-        simname = 'OneDuzf'
         #initiale simultation
         self.sim = flopy.mf6.MFSimulation(sim_name=simname, 
                              exe_name="mf6",
                              version="mf6",) 
         
         #set up tims disctretisation
+        self.simname = simname
+        self.fmod = modelname
+        self.tmod = tmodelname
         dt = t[1:] - t[:-1]
         nper = len(dt)
         self.nper = nper
@@ -50,14 +55,14 @@ class Model:
             perioddata.append((dt[i],1,1.0))
         self.tdis = flopy.mf6.ModflowTdis(self.sim, time_units='DAYS', nper=nper, perioddata=perioddata)
         #initiale GWF
-        modelname="gwf-tidal"
+        #modelname="gwf-tidal"
         self.gwf = flopy.mf6.ModflowGwf(self.sim, modelname = modelname, model_nam_file = f'{modelname}.nam',
                                    save_flows = True,
                                    newtonoptions='UNDER_RELAXATION') 
         
         #initiate GWT
-        tmodelname="gwt-tidal"
-        self.gwt = flopy.mf6.ModflowGwt(self.sim, modelname=tmodelname)
+        if type(tmodelname) != type(None):
+            self.gwt = flopy.mf6.ModflowGwt(self.sim, modelname=tmodelname)
          
         #Flow solver
         self.ims_gwf = ims= flopy.mf6.ModflowIms(self.sim, pname="ims",complexity="moderate",
@@ -68,14 +73,15 @@ class Model:
         self.sim.register_ims_package(self.ims_gwf, [self.gwf.name])
         
         #Transport Solver
-
-        self.ims_gwt = flopy.mf6.ModflowIms(self.sim,
-                               complexity = 'complex',
-                               linear_acceleration='BICGSTAB',
-                               print_option = "all",
-                               filename="{}.ims".format(self.gwt.name))
-        self.sim.register_ims_package(self.ims_gwt, [self.gwt.name])
         
+        if type(tmodelname) != type(None):
+            self.ims_gwt = flopy.mf6.ModflowIms(self.sim,
+                                   complexity = 'complex',
+                                   linear_acceleration='BICGSTAB',
+                                   print_option = "all",
+                                   filename="{}.ims".format(self.gwt.name))
+            self.sim.register_ims_package(self.ims_gwt, [self.gwt.name])
+            
         #Dis packages
         vertices = [[0,0.,1.],
                     [1,1.,1.],
@@ -99,18 +105,18 @@ class Model:
                                 vertices=vertices, 
                                 cell2d=cell2d,
                                 filename=f"{modelname}.disv")
-
-        self.disvt = flopy.mf6.ModflowGwfdisv(self.gwt, 
-                                length_units='meters', 
-                                nlay=nlay, 
-                                ncpl=ncpl, 
-                                nvert=nvert, 
-                                top=top, 
-                                botm=botm, 
-                                idomain=1, 
-                                vertices=vertices, 
-                                cell2d=cell2d,
-                                filename=f"{modelname}_t.disv")
+        if type(tmodelname) != type(None):
+            self.disvt = flopy.mf6.ModflowGwfdisv(self.gwt, 
+                                    length_units='meters', 
+                                    nlay=nlay, 
+                                    ncpl=ncpl, 
+                                    nvert=nvert, 
+                                    top=top, 
+                                    botm=botm, 
+                                    idomain=1, 
+                                    vertices=vertices, 
+                                    cell2d=cell2d,
+                                    filename=f"{modelname}_t.disv")
 
 
         #NPF, advection and dispersion Packages
@@ -120,18 +126,19 @@ class Model:
                               k33=Kz,#vertical conductivity
                               save_flows=True,
                               save_specific_discharge = True,)
-        self.adv = flopy.mf6.ModflowGwtadv(self.gwt, scheme='UPSTREAM')
-    
-        ####Dispersion #####
-        self.dsp = flopy.mf6.ModflowGwtdsp(self.gwt,diffc=0.0001,alh=alphaL,alv=alphaTv,ath1 = alphaT)
+        if type(tmodelname) != type(None):
+            self.adv = flopy.mf6.ModflowGwtadv(self.gwt, scheme='UPSTREAM')
+        
+            ####Dispersion #####
+            self.dsp = flopy.mf6.ModflowGwtdsp(self.gwt,diffc=0.0001,alh=alphaL,alv=alphaTv,ath1 = alphaT)
         
         #STO packages
         self.sto = flopy.mf6.ModflowGwfsto(self.gwf,
                                            ss = Ss, #Specific Storage
                                            sy = Sy, #Specific Yield
                                            iconvert = 1)
-        
-        self.tmst = flopy.mf6.ModflowGwtmst(self.gwt,porosity=theta_sat)
+        if type(tmodelname) != type(None):
+            self.tmst = flopy.mf6.ModflowGwtmst(self.gwt,porosity=theta_sat)
 
         #Drain
         # The top, which will be modified in API
@@ -201,38 +208,41 @@ class Model:
                                           wc_filerecord = f"{modelname}.wcf" ,
                                           filename=f"{modelname}.uzf")        
         #initial conditions
-        pd0 = [(0,"infiltration",35.),
-               (0,"uzet",0.)]
-        uztperioddata = {0: pd0}
-        self.uzt = flopy.mf6.modflow.ModflowGwtuzt(self.gwt,
-                                                   save_flows=True,
-                                                   print_input=True,
-                                                   print_flows=True,
-                                                   print_concentration=True,
-                                                   concentration_filerecord= tmodelname + ".uzt.bin",
-                                                   budget_filerecord= tmodelname + ".uzt.bud",
-                                                   packagedata=uztpackagedata,
-                                                   uztperioddata=uztperioddata,
-                                                   pname="uzf",
-                                                   filename=f"{tmodelname}.uzt")
-        
+        if type(tmodelname) != type(None):
+            pd0 = [(0,"infiltration",35.),
+                   (0,"uzet",0.)]
+            uztperioddata = {0: pd0}
+            
+            self.uzt = flopy.mf6.modflow.ModflowGwtuzt(self.gwt,
+                                                       save_flows=True,
+                                                       print_input=True,
+                                                       print_flows=True,
+                                                       print_concentration=True,
+                                                       concentration_filerecord= tmodelname + ".uzt.bin",
+                                                       budget_filerecord= tmodelname + ".uzt.bud",
+                                                       packagedata=uztpackagedata,
+                                                       uztperioddata=uztperioddata,
+                                                       pname="uzf",
+                                                       filename=f"{tmodelname}.uzt")
+            
         
         
         #Initial conditions
         self.icf=flopy.mf6.ModflowGwfic(self.gwf, pname="ic", strt=Water_Table)
-        self.ict=flopy.mf6.ModflowGwtic(self.gwt, pname="ic", strt=35.)
+        if type(tmodelname) != type(None):
+            self.ict=flopy.mf6.ModflowGwtic(self.gwt, pname="ic", strt=35.)
         
-        #Flow transport coupling
-        
-        #sourcerecarray = [("GHB_1", "AUX", "SALT"),]
-        self.ssm = flopy.mf6.ModflowGwtssm(self.gwt)#,sources = sourcerecarray)"""
-        
-        self.gwfgwt = flopy.mf6.ModflowGwfgwt(self.sim, 
-                                             exgtype='GWF6-GWT6',
-                                             exgmnamea=self.gwf.name, 
-                                             exgmnameb=self.gwt.name)
-        
-        #Oservations
+            #Flow transport coupling
+            
+            #sourcerecarray = [("GHB_1", "AUX", "SALT"),]
+            self.ssm = flopy.mf6.ModflowGwtssm(self.gwt)#,sources = sourcerecarray)"""
+            
+            self.gwfgwt = flopy.mf6.ModflowGwfgwt(self.sim, 
+                                                 exgtype='GWF6-GWT6',
+                                                 exgmnamea=self.gwf.name, 
+                                                 exgmnameb=self.gwt.name)
+            
+            #Oservations
         
         #output control packages
         head_filerecord = f"{simname}.hds"
@@ -242,10 +252,11 @@ class Model:
                                          budget_filerecord=budget_filerecord,
                                          saverecord=[("HEAD", "ALL"), ("BUDGET", "ALL")]
                                          )
-        self.toc = flopy.mf6.ModflowGwtoc(self.gwt,
-                                          concentration_filerecord='SALT.ucn',
-                                          saverecord=[('CONCENTRATION', 'last')])    
-        
+        if type(tmodelname) != type(None):
+            self.toc = flopy.mf6.ModflowGwtoc(self.gwt,
+                                              concentration_filerecord='SALT.ucn',
+                                              saverecord=[('CONCENTRATION', 'last')])    
+            
     def add_burrow(self,):
     
         print('to do')
@@ -254,20 +265,20 @@ class Model:
         self.sim.write_simulation()
     
     
-    def model_run(self,):
+    def model_run(self,t,h,c = None):
         mf6_config_file =  './mfsim.nam'
         mf6 = ModflowApi('libmf6.dll')
         mf6.initialize()  
-        td = np.loadtxt('../tides.csv', delimiter = ',')
+        #td = np.loadtxt('../tides.csv', delimiter = ',')
 
         for i in range(self.nper):
             
             t_c = mf6.get_current_time()
-            n = np.argmin((t_c - td[:,0])**2.)
-            sw = td[n,1]
+            n = np.argmin((t_c - t)**2.)
+            sw = h[n]
             
             
-            address = ["sinf", "gwf-tidal","uzf"]
+            address = ["sinf", self.fmod,"uzf"]
             tag = mf6.get_var_address(*address)
             bound = mf6.get_value_ptr(tag)
             if sw > self.top:
@@ -277,7 +288,7 @@ class Model:
             mf6.set_value(tag,bound)
             #print(sw,self.top,bound)
             
-            address = ["bound","gwf-tidal","drn_1"]
+            address = ["bound",self.fmod,"drn_1"]
             tag = mf6.get_var_address(*address)
             bound = mf6.get_value_ptr(tag)         
             if sw > self.top:
@@ -305,21 +316,22 @@ class Model:
             if not has_converged:
                 return None
             mf6.finalize_solve(1)
-            #Transport solution
-            address = ["MXITER", "SLN_2"]
-            mxittag = mf6.get_var_address(*address)
-            mxit = mf6.get_value_ptr(mxittag)
-            kiter = 0
-            mf6.prepare_solve(2)
-
-            while kiter < mxit:
-                has_converged = mf6.solve(2)
-                kiter += 1
-                if has_converged:
-                    break
-            if not has_converged:
-                return None
-            mf6.finalize_solve(2)
+            if type(self.tmod) != type(None):
+                #Transport solution
+                address = ["MXITER", "SLN_2"]
+                mxittag = mf6.get_var_address(*address)
+                mxit = mf6.get_value_ptr(mxittag)
+                kiter = 0
+                mf6.prepare_solve(2)
+    
+                while kiter < mxit:
+                    has_converged = mf6.solve(2)
+                    kiter += 1
+                    if has_converged:
+                        break
+                if not has_converged:
+                    return None
+                mf6.finalize_solve(2)
             
             mf6.finalize_time_step()
         
@@ -327,7 +339,8 @@ class Model:
         mf6.finalize()
         hds = self.gwf.output.head()
         self.h= hds.get_alldata()
-        """cbc = gwf.output.budget()
-        ghb = cbc.get_data(text="GHB")"""
-        conc = self.gwt.output.concentration()
-        self.c = conc.get_alldata()
+        cbc = self.gwf.output.budget()
+        ghb = cbc.get_data(text="GHB")
+        if type(self.tmod) != type(None):
+            conc = self.gwt.output.concentration()
+            self.c = conc.get_alldata()
