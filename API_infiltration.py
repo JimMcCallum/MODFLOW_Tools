@@ -345,7 +345,7 @@ class Model:
         ghb = []
         for ii in range(self.nper):
             ghb.append(data[ii][0][-1])
-        self.ghb = np.array(self.ghb)
+        self.ghb = np.array(ghb)
         #self.ghb = cbc.get_ts((self.nlay-1,0),text="GHB")
         if type(self.tmod) != type(None):
             conc = self.gwt.output.concentration()
