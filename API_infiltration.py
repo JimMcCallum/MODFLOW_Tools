@@ -204,7 +204,7 @@ class Model:
                                           mover=False,
                                           perioddata={0: pd0},
                                           ntrailwaves=7, 
-                                          nwavesets=1000,
+                                          nwavesets=2000,
                                           nuzfcells=len(packagedata),
                                           budget_filerecord=f"{modelname}.uzf.bud",
                                           wc_filerecord = f"{modelname}.wcf" ,
