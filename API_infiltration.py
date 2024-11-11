@@ -341,7 +341,7 @@ class Model:
         hds = self.gwf.output.head()
         self.h= hds.get_alldata()
         cbc = self.gwf.output.budget()
-        data = cbc.get_data(text = 'GHB')[0]
+        self.data = cbc.get_data(text = 'GHB')
         
         self.ghb =[item[2] for item in data]
         self.ghb = np.array(self.ghb)
