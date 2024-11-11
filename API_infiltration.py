@@ -289,7 +289,7 @@ class Model:
             mf6.set_value(tag,bound)
             #print(sw,self.top,bound)
             
-            address = ["bound",self.fmod,"drn_1"]
+            address = ["cond",self.fmod,"drn_1"]
             tag = mf6.get_var_address(*address)
             bound = mf6.get_value_ptr(tag)    
             print(bound)
